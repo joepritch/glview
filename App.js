@@ -20,24 +20,22 @@ export default class App extends React.Component {
   _onContextCreate = async gl => {
 
     const vertexShaderSource =
-    `#version 300 es
-    in vec4 a_position;
+    `
+    attribute vec4 a_position;
     void main () {
       gl_Position = a_position;
     }
     `;
 
     const fragmentShaderSource =
-    `#version 300 es
+    `
     precision mediump float;
-    out vec4 outColor;
     void main () {
-      outColor = vec4(1, .5, 0, 1);
+      gl_FragColor = vec4(1, .5, 0, 1);
     }
     `
 
     function createShader(gl, type, source) {
-      console.log(gl instanceof WebGLRenderingContext);
       const shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
