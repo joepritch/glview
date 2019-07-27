@@ -42,10 +42,9 @@ export default class App extends React.Component {
       const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
       if (success) {
         return shader;
-      } else {
-        console.log('shader failed to compile');
       }
 
+      console.log('shader failed to compile');
       console.log(gl.getShaderInfoLog(shader));
       gl.deleteShader(shader)
     }
@@ -54,18 +53,29 @@ export default class App extends React.Component {
 
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
+    function createProgram(gl, vertexShader, fragmentShader) {
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      const success = gl.getProgramParameter(program, gl.LINK_STATUS);
+      if (success) {
+        return program;
+      }
+
+      console.log('program failed to link');
+      console.log(gl.getProgramInfoLog(program));
+      gl.deleteProgram(program);
+    }
+
+    const program = createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
 
     const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(positionAttributeLocation);
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-    gl.enableVertexAttribArray(positionAttributeLocation);
 
     const size = 2;
     const type = gl.FLOAT;
@@ -73,16 +83,23 @@ export default class App extends React.Component {
     const stride = 0;
     const offset = 0;
     const primitiveType = gl.TRIANGLES;
-    const count = 3;
+    const count = 6;
     gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset)
 
+    function createRectangle(width, height, positionX, positionY) {
+      const rectanglePositions = [
+        positionX, positionY,
+        positionX + width, positionY,
+        positionX, positionY + height,
+        positionX + width, positionY,
+        positionX + width, positionY + height,
+        positionX, positionY + height,
+      ];
+      return rectanglePositions;
+    }
 
     const onTick = () => {
-      const positions = [
-        this.state.testValue, 0,
-        0, 0.5,
-        0.7, 0,
-      ];
+      const positions = createRectangle(.5, .5, this.state.testValue, -.5);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
       gl.clearColor(.2, 0, .6, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -127,10 +144,7 @@ const styles = StyleSheet.create({
   },
   glview: {
     width: 300,
-    height: 200,
-    maxHeight: 200,
-    borderColor: 'red',
-    borderRadius: 1,
-    borderWidth: 3,
+    height: 300,
+    maxHeight: 300,
   },
 });
