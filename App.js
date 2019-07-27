@@ -111,22 +111,22 @@ export default class App extends React.Component {
 
     const getColors = (gl) => {
       // pick 2 random colors
-      const r1 = Math.random();
-      const b1 = Math.random();
-      const g1 = Math.random();
+      const r1 = 1
+      const g1 = 0
+      const b1 = 0
 
-      const r2 = Math.random();
-      const b2 = Math.random();
-      const g2 = Math.random();
+      const r2 = 0
+      const g2 = 0
+      const b2 = 1
 
       const colorArray =
       [
-        r1, b1, g1, 1,
-        r1, b1, g1, 1,
-        r2, b2, g2, 1,
-        r1, b1, g1, 1,
-        r2, b2, g2, 1,
-        r2, b2, g2, 1
+        r1, g1, b1, 1,
+        r1, g1, b1, 1,
+        r2, g2, b2, 1,
+        r1, g1, b1, 1,
+        r2, g2, b2, 1,
+        r2, g2, b2, 1
       ];
 
       return new Float32Array(colorArray);
