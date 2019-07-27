@@ -65,21 +65,46 @@ export default class App extends React.Component {
       return rectanglePositions;
     }
 
+    function setColors(gl) {
+      // Pick 2 random colors.
+      const r1 = Math.random();
+      const b1 = Math.random();
+      const g1 = Math.random();
+
+      const r2 = Math.random();
+      const b2 = Math.random();
+      const g2 = Math.random();
+
+      gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(
+            [ r1, b1, g1, 1,
+              r1, b1, g1, 1,
+              r2, b2, g2, 1,
+              r1, b1, g1, 1,
+              r2, b2, g2, 1,
+              r2, b2, g2, 1]),
+          gl.STATIC_DRAW);
+    }
+
     //shaders
     const vertexShaderSource =
       `
       attribute vec4 a_position;
+      attribute vec4 a_color;
+      varying vec4 v_color;
       void main () {
         gl_Position = a_position;
+        v_color = a_color;
       }
       `;
 
     const fragmentShaderSource =
       `
       precision highp float;
-      uniform vec4 u_color;
+      varying vec4 v_color;
       void main () {
-        gl_FragColor = u_color;
+        gl_FragColor = v_color;
       }
       `;
 
@@ -91,11 +116,22 @@ export default class App extends React.Component {
     const program = createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
 
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+
+    const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(colorAttributeLocation);
+
+    setColors(gl);
+
+    gl.vertexAttribPointer(colorAttributeLocation, 4, gl.FLOAT, false, 0, 0)
+
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
     const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
     gl.enableVertexAttribArray(positionAttributeLocation);
+
 
     const size = 2;
     const type = gl.FLOAT;
@@ -108,13 +144,10 @@ export default class App extends React.Component {
 
     const count = 6;
 
-    const colorUniformLocation = gl.getUniformLocation(program, "u_color");
-    gl.uniform4f(colorUniformLocation, Math.random(), Math.random(), Math.random(), 1);
-
     const onTick = () => {
       const positions = createRectangle(.5, .5, this.state.testValue, -.5);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-      gl.clearColor(.2, .9, .6, 1);
+      gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.drawArrays(primitiveType, offset, count);
       gl.endFrameEXP();
