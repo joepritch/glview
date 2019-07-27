@@ -17,14 +17,11 @@ export default class App extends React.Component {
     this.setState({screenHeight: height, screenWidth: width})
   }
 
-  componentDidMount(){
-    console.log(this.state);
-  }
-
   _onContextCreate = async gl => {
 
     //functions
-    function createShader(gl, type, source) {
+    const createShader = (gl, type, source) => {
+      //create and compile shaders
       const shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
@@ -38,7 +35,8 @@ export default class App extends React.Component {
       gl.deleteShader(shader)
     }
 
-    function createProgram(gl, vertexShader, fragmentShader) {
+    const createProgram = (gl, vertexShader, fragmentShader) => {
+      //creates and links the program
       const program = gl.createProgram();
       gl.attachShader(program, vertexShader);
       gl.attachShader(program, fragmentShader);
@@ -53,8 +51,31 @@ export default class App extends React.Component {
       gl.deleteProgram(program);
     }
 
-    function createRectangle(width, height, positionX, positionY) {
-      const rectanglePositions = [
+    const setGeometry = (gl) => {
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+      const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+      gl.enableVertexAttribArray(positionAttributeLocation);
+
+      const size = 2;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset)
+
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        createRectangle(.5, .5, this.state.testValue, -.5),
+        gl.STATIC_DRAW
+      );
+    }
+
+    const createRectangle = (width, height, positionX, positionY) => {
+      //generate a rectangle with specified size and position
+      const rectanglePositions =
+      [
         positionX, positionY,
         positionX + width, positionY,
         positionX, positionY + height,
@@ -62,11 +83,34 @@ export default class App extends React.Component {
         positionX + width, positionY + height,
         positionX, positionY + height,
       ];
-      return rectanglePositions;
+
+      return new Float32Array(rectanglePositions);
     }
 
-    function setColors(gl) {
-      // Pick 2 random colors.
+    const setColors = (gl) => {
+      //load colors to GPU
+      const colorBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+
+      const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+      gl.enableVertexAttribArray(colorAttributeLocation);
+
+      const size = 4;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
+
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        getColors(gl),
+        gl.STATIC_DRAW
+      );
+    }
+
+    const getColors = (gl) => {
+      // pick 2 random colors
       const r1 = Math.random();
       const b1 = Math.random();
       const g1 = Math.random();
@@ -75,16 +119,17 @@ export default class App extends React.Component {
       const b2 = Math.random();
       const g2 = Math.random();
 
-      gl.bufferData(
-          gl.ARRAY_BUFFER,
-          new Float32Array(
-            [ r1, b1, g1, 1,
-              r1, b1, g1, 1,
-              r2, b2, g2, 1,
-              r1, b1, g1, 1,
-              r2, b2, g2, 1,
-              r2, b2, g2, 1]),
-          gl.STATIC_DRAW);
+      const colorArray =
+      [
+        r1, b1, g1, 1,
+        r1, b1, g1, 1,
+        r2, b2, g2, 1,
+        r1, b1, g1, 1,
+        r2, b2, g2, 1,
+        r2, b2, g2, 1
+      ];
+
+      return new Float32Array(colorArray);
     }
 
     //shaders
@@ -116,37 +161,15 @@ export default class App extends React.Component {
     const program = createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
 
-    const colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-
-    const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
-    gl.enableVertexAttribArray(colorAttributeLocation);
-
     setColors(gl);
 
-    gl.vertexAttribPointer(colorAttributeLocation, 4, gl.FLOAT, false, 0, 0)
-
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-    const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-    gl.enableVertexAttribArray(positionAttributeLocation);
-
-
-    const size = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset)
 
     const primitiveType = gl.TRIANGLES;
-
     const count = 6;
+    const offset = 0;
 
     const onTick = () => {
-      const positions = createRectangle(.5, .5, this.state.testValue, -.5);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+      setGeometry(gl);
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.drawArrays(primitiveType, offset, count);
