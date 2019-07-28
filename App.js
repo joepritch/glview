@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, PanResponder } from 'react-native';
 import { GLView } from 'expo-gl';
 
 export default class App extends React.Component {
@@ -8,13 +8,21 @@ export default class App extends React.Component {
     this.state = {
       screenHeight: null,
       screenWidth: null,
-      testValue: -1,
+      xValue: -1,
+      yValue: -1,
     }
   }
 
   componentWillMount(){
     const {height, width} = Dimensions.get('window');
     this.setState({screenHeight: height, screenWidth: width})
+
+    this.PanResponder = PanResponder.create({
+      onStartShouldSetPanResponder: (event, gestureState) => true,
+      onPanResponderMove: (event, gestureState) => {
+        this.setState({xValue: (gestureState.dx / 200), yValue: (gestureState.dy / -200)})
+      }
+    })
   }
 
   _onContextCreate = async gl => {
@@ -51,23 +59,22 @@ export default class App extends React.Component {
       gl.deleteProgram(program);
     }
 
-    const setGeometry = (gl) => {
-      const positionBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const generateBufferData = (gl, attribute, size, dataFunc) => {
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 
-      const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-      gl.enableVertexAttribArray(positionAttributeLocation);
+      const attributeLocation = gl.getAttribLocation(program, attribute);
+      gl.enableVertexAttribArray(attributeLocation);
 
-      const size = 2;
       const type = gl.FLOAT;
       const normalize = false;
       const stride = 0;
       const offset = 0;
-      gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset)
+      gl.vertexAttribPointer(attributeLocation, size, type, normalize, stride, offset)
 
       gl.bufferData(
         gl.ARRAY_BUFFER,
-        createRectangle(.5, .5, this.state.testValue, -.5),
+        dataFunc,
         gl.STATIC_DRAW
       );
     }
@@ -87,29 +94,29 @@ export default class App extends React.Component {
       return new Float32Array(rectanglePositions);
     }
 
-    const setColors = (gl) => {
-      //load colors to GPU
-      const colorBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    // const setColors = (gl) => {
+    //   //load colors to GPU
+    //   const colorBuffer = gl.createBuffer();
+    //   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    //
+    //   const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+    //   gl.enableVertexAttribArray(colorAttributeLocation);
+    //
+    //   const size = 4;
+    //   const type = gl.FLOAT;
+    //   const normalize = false;
+    //   const stride = 0;
+    //   const offset = 0;
+    //   gl.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
+    //
+    //   gl.bufferData(
+    //     gl.ARRAY_BUFFER,
+    //     getColors(gl),
+    //     gl.STATIC_DRAW
+    //   );
+    // }
 
-      const colorAttributeLocation = gl.getAttribLocation(program, "a_color");
-      gl.enableVertexAttribArray(colorAttributeLocation);
-
-      const size = 4;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-      gl.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
-
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        getColors(gl),
-        gl.STATIC_DRAW
-      );
-    }
-
-    const getColors = (gl) => {
+    const getColors = () => {
       // pick 2 random colors
       const r1 = 1
       const g1 = 0
@@ -161,7 +168,8 @@ export default class App extends React.Component {
     const program = createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
 
-    setColors(gl);
+    generateBufferData(gl, "a_color", 4, getColors());
+    // setColors(gl);
 
 
     const primitiveType = gl.TRIANGLES;
@@ -169,7 +177,7 @@ export default class App extends React.Component {
     const offset = 0;
 
     const onTick = () => {
-      setGeometry(gl);
+      generateBufferData(gl, "a_position", 2, createRectangle(.5, .5, this.state.xValue, this.state.yValue));
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.drawArrays(primitiveType, offset, count);
@@ -189,15 +197,8 @@ export default class App extends React.Component {
 
     return (
       <View style={styles.container}>
-        <GLView style={{width: 300, minHeight: 300, maxHeight: 300}} onContextCreate={this._onContextCreate}/>
-        <TouchableOpacity
-          style={{ width: 300, height: 100, backgroundColor: 'red'}}
-          onPress={() => {this.setState({testValue: this.state.testValue + .1 })}}
-          />
-        <TouchableOpacity
-          style={{ width: 300, height: 100, backgroundColor: 'blue'}}
-          onPress={() => {this.setState({testValue: this.state.testValue - .1 })}}
-          />
+        <GLView {...this.PanResponder.panHandlers} style={{width: 300, minHeight: 300, maxHeight: 300}} onContextCreate={this._onContextCreate}/>
+
       </View>
     );
   }

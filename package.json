@@ -8,6 +8,7 @@
     "eject": "expo eject"
   },
   "dependencies": {
+    "@react-native-community/slider": "^2.0.0",
     "expo": "^33.0.0",
     "expo-gl": "^5.0.1",
     "react": "16.8.3",
