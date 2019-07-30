@@ -8,16 +8,16 @@ export default class App extends React.Component {
     this.state = {
       screenHeight: null,
       screenWidth: null,
+      width: 100,
+      height: 100,
       xValue: 0,
       yValue: 0,
       xValueDelta: 0,
       yValueDelta: 0,
-      width: 100,
-      height: 100,
-      count: 0,
-      renderObject: [],
       rotation: [0, 1],
       rotationDegreeDelta: 0,
+      scale: [1, 1],
+      scaleDelta: [1, 1],
     }
   }
 
@@ -45,13 +45,29 @@ export default class App extends React.Component {
       }
     })
 
+    this.scaleResponder = PanResponder.create({
+      onStartShouldSetPanResponder: (event, gestureState) => true,
+      onPanResponderMove: (event, gestureState) => {
+        this.setState({scale: this.calculateScale(gestureState, this.state.scaleDelta)})
+      },
+      onPanResponderRelease: (event, gestureState) => {
+        this.setState({scaleDelta: this.calculateScale(gestureState, this.state.scaleDelta)})
+      }
+    })
+
   }
 
-  calculateRotation = (degrees, oldSine, oldCosine) =>{
+  calculateRotation = (degrees) => {
     const radians = degrees * Math.PI / 180;
     const sine = Math.sin(radians);
     const cosine = Math.cos(radians);
     return [sine, cosine]
+  }
+
+  calculateScale = (scale, scaleDelta) => {
+    xScale = (scale.dx / 100) + scaleDelta[0];
+    yScale = (scale.dy / 100) + scaleDelta[1];
+    return [xScale, yScale];
   }
 
   createRandomTriangle = () => {
@@ -158,12 +174,14 @@ export default class App extends React.Component {
       attribute vec2 a_position;
       uniform vec2 u_translation;
       uniform vec2 u_rotation;
+      uniform vec2 u_scale;
       uniform vec2 u_resolution;
       varying vec4 v_color;
       void main () {
+        vec2 scaledPosition = a_position * u_scale;
         vec2 rotatedPosition = vec2(
-          a_position.x * u_rotation.y + a_position.y * u_rotation.x,
-          a_position.y * u_rotation.y - a_position.x * u_rotation.x
+          scaledPosition.x * u_rotation.y + scaledPosition.y * u_rotation.x,
+          scaledPosition.y * u_rotation.y - scaledPosition.x * u_rotation.x
         );
         vec2 position = rotatedPosition + u_translation;
         vec2 zeroToOne = position / u_resolution;
@@ -198,9 +216,10 @@ export default class App extends React.Component {
 
     const translationUniformLocation = gl.getUniformLocation(program, "u_translation");
     const rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
+    const scaleUniformLocation = gl.getUniformLocation(program, "u_scale");
 
 
-    const renderObject = this.createRectangle(this.state.width, this.state.height, 25, 25);
+    const renderObject = this.createF(100, 100, 0, 0);
 
     setGeometry(gl, renderObject);
 
@@ -208,14 +227,16 @@ export default class App extends React.Component {
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-      const rotation = this.state.rotation;
-      gl.uniform2fv(rotationUniformLocation, rotation)
       const translation = [this.state.xValue, this.state.yValue];
       gl.uniform2fv(translationUniformLocation, translation);
+      const rotation = this.state.rotation;
+      gl.uniform2fv(rotationUniformLocation, rotation)
+      const scale = this.state.scale;
+      gl.uniform2fv(scaleUniformLocation, scale)
 
       const primitiveType = gl.TRIANGLES;
       const offset = 0;
-      const count = 3;
+      const count = 18;
 
       gl.drawArrays(primitiveType, offset, count);
       gl.endFrameEXP();
@@ -241,7 +262,11 @@ export default class App extends React.Component {
         />
       <View
         {...this.rotateResponder.panHandlers}
-        style={{width: 400, height: 100, borderRadius: 50, backgroundColor: 'green'}}
+        style={{width: 400, height: 100, borderRadius: 50, backgroundColor: 'lightgreen'}}
+      />
+      <View
+        {...this.scaleResponder.panHandlers}
+        style={{width: 400, height: 100, borderRadius: 50, backgroundColor: 'pink'}}
       />
       </View>
     );
