@@ -16,6 +16,8 @@ export default class App extends React.Component {
       height: 100,
       count: 0,
       renderObject: [],
+      rotation: [0, 1],
+      rotationDegreeDelta: 0,
     }
   }
 
@@ -23,7 +25,7 @@ export default class App extends React.Component {
     const {height, width} = Dimensions.get('window');
     this.setState({screenHeight: height, screenWidth: width})
 
-    this.PanResponder = PanResponder.create({
+    this.translateResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
         this.setState({xValue: (gestureState.dx + this.state.xValueDelta), yValue: (gestureState.dy + this.state.yValueDelta)})
@@ -32,13 +34,31 @@ export default class App extends React.Component {
         this.setState({xValueDelta: (gestureState.dx + this.state.xValueDelta), yValueDelta: (gestureState.dy + this.state.yValueDelta)})
       }
     })
+
+    this.rotateResponder = PanResponder.create({
+      onStartShouldSetPanResponder: (event, gestureState) => true,
+      onPanResponderMove: (event, gestureState) => {
+        this.setState({rotation: this.calculateRotation(gestureState.dx + this.state.rotationDegreeDelta)})
+      },
+      onPanResponderRelease: (event, gestureState) => {
+        this.setState({rotationDegreeDelta: gestureState.dx + this.state.rotationDegreeDelta})
+      }
+    })
+
   }
 
-  createRandomTriangle = (gl) => {
-    return this.createTriangle(gl, Math.random() * 200, Math.random() * 200, Math.random() * 200, Math.random() * 200)
+  calculateRotation = (degrees, oldSine, oldCosine) =>{
+    const radians = degrees * Math.PI / 180;
+    const sine = Math.sin(radians);
+    const cosine = Math.cos(radians);
+    return [sine, cosine]
   }
 
-  createTriangle = (gl, width, height, xValue, yValue) => {
+  createRandomTriangle = () => {
+    return this.createTriangle(Math.random() * 200, Math.random() * 200, Math.random() * 200, Math.random() * 200)
+  }
+
+  createTriangle = (width, height, xValue, yValue) => {
     //generate a triangle with specified size and a_position
     const triangleVerticies = [
       xValue, yValue,
@@ -50,26 +70,26 @@ export default class App extends React.Component {
     return triangleVerticies;
   }
 
-  createRectangle = (gl, width, height, xValue, yValue) => {
+  createRectangle = (width, height, xValue, yValue) => {
     //generate a rectangle with specified size and position
-    const firstTriangle = this.createTriangle(gl, width, height, xValue, yValue);
+    const firstTriangle = this.createTriangle(width, height, xValue, yValue);
 
-    const secondTriangle = this.createTriangle(gl, (width * -1), (height * -1), (xValue + width), (yValue + height));
+    const secondTriangle = this.createTriangle((width * -1), (height * -1), (xValue + width), (yValue + height));
 
     const rectangle = firstTriangle.concat(secondTriangle);
 
     return rectangle;
   }
 
-  createF = (gl, width, height, xValue, yValue) => {
+  createF = (width, height, xValue, yValue) => {
     //generate rectangles in the shape of an 'F' with a specified height and position
     const thickness = width / 4;
 
-    const column = this.createRectangle(gl, thickness, height, xValue, yValue);
+    const column = this.createRectangle(thickness, height, xValue, yValue);
 
-    const topRow = this.createRectangle(gl, (width - thickness), thickness, (xValue + thickness), yValue);
+    const topRow = this.createRectangle((width - thickness), thickness, (xValue + thickness), yValue);
 
-    const middleRow = this.createRectangle(gl, (width - (thickness * 2)), thickness, (xValue + thickness), (yValue + (thickness * 2)));
+    const middleRow = this.createRectangle((width - (thickness * 2)), thickness, (xValue + thickness), (yValue + (thickness * 2)));
 
     const f = column.concat(topRow, middleRow);
 
@@ -137,10 +157,15 @@ export default class App extends React.Component {
       `
       attribute vec2 a_position;
       uniform vec2 u_translation;
+      uniform vec2 u_rotation;
       uniform vec2 u_resolution;
       varying vec4 v_color;
       void main () {
-        vec2 position = a_position + u_translation;
+        vec2 rotatedPosition = vec2(
+          a_position.x * u_rotation.y + a_position.y * u_rotation.x,
+          a_position.y * u_rotation.y - a_position.x * u_rotation.x
+        );
+        vec2 position = rotatedPosition + u_translation;
         vec2 zeroToOne = position / u_resolution;
         vec2 zeroToTwo = zeroToOne * 2.0;
         vec2 clipSpace = zeroToTwo - 1.0;
@@ -151,7 +176,7 @@ export default class App extends React.Component {
 
     const fragmentShaderSource =
       `
-      precision mediump float;
+      precision highp float;
       varying vec4 v_color;
       void main () {
         gl_FragColor = v_color;
@@ -172,21 +197,25 @@ export default class App extends React.Component {
     gl.uniform2f(resolutionUniformLocation, 400, 400);
 
     const translationUniformLocation = gl.getUniformLocation(program, "u_translation");
+    const rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
 
 
-    const renderObject = this.createF(gl, this.state.width, this.state.height, 25, 25).concat(this.createTriangle(gl, this.state.width, this.state.height, 25, 25))
+    const renderObject = this.createRectangle(this.state.width, this.state.height, 25, 25);
 
     setGeometry(gl, renderObject);
 
     const onTick = () => {
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      const rotation = this.state.rotation;
+      gl.uniform2fv(rotationUniformLocation, rotation)
       const translation = [this.state.xValue, this.state.yValue];
       gl.uniform2fv(translationUniformLocation, translation);
 
       const primitiveType = gl.TRIANGLES;
       const offset = 0;
-      const count = 21;
+      const count = 3;
 
       gl.drawArrays(primitiveType, offset, count);
       gl.endFrameEXP();
@@ -206,10 +235,14 @@ export default class App extends React.Component {
     return (
       <View style={styles.container}>
         <GLView
-          {...this.PanResponder.panHandlers}
+          {...this.translateResponder.panHandlers}
           style={{width: 400, minHeight: 400, maxHeight: 400}}
           onContextCreate={this._onContextCreate}
         />
+      <View
+        {...this.rotateResponder.panHandlers}
+        style={{width: 400, height: 100, borderRadius: 50, backgroundColor: 'green'}}
+      />
       </View>
     );
   }
