@@ -10,10 +10,8 @@ export default class App extends React.Component {
       screenWidth: null,
       width: 100,
       height: 100,
-      xValue: 0,
-      yValue: 0,
-      xValueDelta: 0,
-      yValueDelta: 0,
+      translation: [0, 0],
+      translationDelta: [0, 0],
       rotation: [0, 1],
       rotationDegreeDelta: 0,
       scale: [1, 1],
@@ -28,17 +26,17 @@ export default class App extends React.Component {
     this.translateResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({xValue: (gestureState.dx + this.state.xValueDelta), yValue: (gestureState.dy + this.state.yValueDelta)})
+        this.setState({translation: this.matrix3.calculateTranslation(gestureState, this.state.translationDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
-        this.setState({xValueDelta: (gestureState.dx + this.state.xValueDelta), yValueDelta: (gestureState.dy + this.state.yValueDelta)})
+        this.setState({translationDelta: this.matrix3.calculateTranslation(gestureState, this.state.translationDelta)})
       }
     })
 
     this.rotateResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({rotation: this.calculateRotation(gestureState.dx + this.state.rotationDegreeDelta)})
+        this.setState({rotation: this.matrix3.calculateRotation(gestureState.dx + this.state.rotationDegreeDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
         this.setState({rotationDegreeDelta: gestureState.dx + this.state.rotationDegreeDelta})
@@ -48,26 +46,36 @@ export default class App extends React.Component {
     this.scaleResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({scale: this.calculateScale(gestureState, this.state.scaleDelta)})
+        this.setState({scale: this.matrix3.calculateScale(gestureState, this.state.scaleDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
-        this.setState({scaleDelta: this.calculateScale(gestureState, this.state.scaleDelta)})
+        this.setState({scaleDelta: this.matrix3.calculateScale(gestureState, this.state.scaleDelta)})
       }
     })
 
   }
 
-  calculateRotation = (degrees) => {
-    const radians = degrees * Math.PI / 180;
-    const sine = Math.sin(radians);
-    const cosine = Math.cos(radians);
-    return [sine, cosine]
-  }
+  matrix3 = {
+    calculateTranslation: (translation, translationDelta) => {
+      const tx = translation.dx + translationDelta[0];
+      const ty = translation.dy + translationDelta[1];
+      return [
+        tx, ty
+      ];
+    },
 
-  calculateScale = (scale, scaleDelta) => {
-    xScale = (scale.dx / 100) + scaleDelta[0];
-    yScale = (scale.dy / 100) + scaleDelta[1];
-    return [xScale, yScale];
+    calculateRotation: (degrees) => {
+      const radians = degrees * Math.PI / 180;
+      const sine = Math.sin(radians);
+      const cosine = Math.cos(radians);
+      return [sine, cosine]
+    },
+
+    calculateScale: (scale, scaleDelta) => {
+      const xScale = (scale.dx / 100) + scaleDelta[0];
+      const yScale = (scale.dy / 100) + scaleDelta[1];
+      return [xScale, yScale];
+    },
   }
 
   createRandomTriangle = () => {
@@ -227,7 +235,7 @@ export default class App extends React.Component {
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-      const translation = [this.state.xValue, this.state.yValue];
+      const translation = this.state.translation;
       gl.uniform2fv(translationUniformLocation, translation);
       const rotation = this.state.rotation;
       gl.uniform2fv(rotationUniformLocation, rotation)
