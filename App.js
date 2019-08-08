@@ -75,7 +75,7 @@ export default class App extends React.Component {
       ];
     },
 
-    scale: () => {
+    scaling: () => {
       const s = this.state.scale;
       return [
         s[0], 0, 0,
@@ -131,6 +131,18 @@ export default class App extends React.Component {
         b20 * a01 + b21 * a11 + b22 * a21,
         b20 * a02 + b21 * a12 + b22 * a22,
       ];
+    },
+
+    translate: (m) => {
+      return this.m3.multiply(m, this.m3.translation());
+    },
+
+    rotate: (m) => {
+      return this.m3.multiply(m, this.m3.rotation());
+    },
+
+    scale: (m) => {
+      return this.m3.multiply(m, this.m3.scaling());
     },
   };
   //transforms
@@ -296,14 +308,10 @@ export default class App extends React.Component {
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-      const translationMatrix = this.m3.translation();
-      const rotationMatrix = this.m3.rotation();
-      const scaleMatrix = this.m3.scale();
-      const projectionMatrix = this.m3.projection(400, 400);
-
-      let matrix = this.m3.multiply(projectionMatrix, translationMatrix);
-      matrix = this.m3.multiply(matrix, rotationMatrix);
-      matrix = this.m3.multiply(matrix, scaleMatrix);
+      let matrix = this.m3.projection(400, 400);
+      matrix = this.m3.translate(matrix);
+      matrix = this.m3.rotate(matrix);
+      matrix = this.m3.scale(matrix);
       gl.uniformMatrix3fv(matrixLocation, false, matrix);
 
       const primitiveType = gl.TRIANGLES;
