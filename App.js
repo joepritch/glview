@@ -54,7 +54,7 @@ export default class App extends React.Component {
     })
 
   }
-  
+
   //matrix
   m3 = {
     translation: () => {
@@ -81,6 +81,22 @@ export default class App extends React.Component {
         s[0], 0, 0,
         0, s[1], 0,
         0, 0, 1,
+      ];
+    },
+
+    identity: () => {
+      return [
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1,
+      ];
+    },
+
+    projection: (width, height) => {
+      return [
+        2 / width, 0, 0,
+        0, -2 / height, 0,
+        -1, 1, 1
       ];
     },
 
@@ -115,7 +131,7 @@ export default class App extends React.Component {
         b20 * a01 + b21 * a11 + b22 * a21,
         b20 * a02 + b21 * a12 + b22 * a22,
       ];
-    }
+    },
   };
   //transforms
   calculateTranslation = (translation, translationDelta) => {
@@ -243,14 +259,9 @@ export default class App extends React.Component {
       `
       attribute vec2 a_position;
       uniform mat3 u_matrix;
-      uniform vec2 u_resolution;
       varying vec4 v_color;
       void main () {
-        vec2 position = (u_matrix * vec3(a_position, 1)).xy;
-        vec2 zeroToOne = position / u_resolution;
-        vec2 zeroToTwo = zeroToOne * 2.0;
-        vec2 clipSpace = zeroToTwo - 1.0;
-        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+        gl_Position = vec4((u_matrix * vec3(a_position, 1)).xy, 0, 1);
         v_color = gl_Position * 0.5 + 0.5;
       }
       `;
@@ -274,14 +285,8 @@ export default class App extends React.Component {
     gl.useProgram(program);
 
     //main
-    const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-    gl.uniform2f(resolutionUniformLocation, 400, 400);
 
     const matrixLocation = gl.getUniformLocation(program, "u_matrix");
-    // const translationUniformLocation = gl.getUniformLocation(program, "u_translation");
-    // const rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
-    // const scaleUniformLocation = gl.getUniformLocation(program, "u_scale");
-
 
     const renderObject = this.createF(100, 100, 0, 0);
 
@@ -294,10 +299,11 @@ export default class App extends React.Component {
       const translationMatrix = this.m3.translation();
       const rotationMatrix = this.m3.rotation();
       const scaleMatrix = this.m3.scale();
+      const projectionMatrix = this.m3.projection(400, 400);
 
-      let matrix = this.m3.multiply(translationMatrix, rotationMatrix);
+      let matrix = this.m3.multiply(projectionMatrix, translationMatrix);
+      matrix = this.m3.multiply(matrix, rotationMatrix);
       matrix = this.m3.multiply(matrix, scaleMatrix);
-
       gl.uniformMatrix3fv(matrixLocation, false, matrix);
 
       const primitiveType = gl.TRIANGLES;
