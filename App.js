@@ -26,17 +26,17 @@ export default class App extends React.Component {
     this.translateResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({translation: this.matrix3.calculateTranslation(gestureState, this.state.translationDelta)})
+        this.setState({translation: this.calculateTranslation(gestureState, this.state.translationDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
-        this.setState({translationDelta: this.matrix3.calculateTranslation(gestureState, this.state.translationDelta)})
+        this.setState({translationDelta: this.calculateTranslation(gestureState, this.state.translationDelta)})
       }
     })
 
     this.rotateResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({rotation: this.matrix3.calculateRotation(gestureState.dx + this.state.rotationDegreeDelta)})
+        this.setState({rotation: this.calculateRotation(gestureState.dx + this.state.rotationDegreeDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
         this.setState({rotationDegreeDelta: gestureState.dx + this.state.rotationDegreeDelta})
@@ -46,44 +46,106 @@ export default class App extends React.Component {
     this.scaleResponder = PanResponder.create({
       onStartShouldSetPanResponder: (event, gestureState) => true,
       onPanResponderMove: (event, gestureState) => {
-        this.setState({scale: this.matrix3.calculateScale(gestureState, this.state.scaleDelta)})
+        this.setState({scale: this.calculateScale(gestureState, this.state.scaleDelta)})
       },
       onPanResponderRelease: (event, gestureState) => {
-        this.setState({scaleDelta: this.matrix3.calculateScale(gestureState, this.state.scaleDelta)})
+        this.setState({scaleDelta: this.calculateScale(gestureState, this.state.scaleDelta)})
       }
     })
 
   }
-
-  matrix3 = {
-    calculateTranslation: (translation, translationDelta) => {
-      const tx = translation.dx + translationDelta[0];
-      const ty = translation.dy + translationDelta[1];
+  
+  //matrix
+  m3 = {
+    translation: () => {
+      const t = this.state.translation;
       return [
-        tx, ty
+        1, 0, 0,
+        0, 1, 0,
+        t[0], t[1], 1,
       ];
     },
 
-    calculateRotation: (degrees) => {
-      const radians = degrees * Math.PI / 180;
-      const sine = Math.sin(radians);
-      const cosine = Math.cos(radians);
-      return [sine, cosine]
+    rotation: () => {
+      const r = this.state.rotation;
+      return [
+        r[1],-r[0], 0,
+        r[0], r[1], 0,
+        0, 0, 1,
+      ];
     },
 
-    calculateScale: (scale, scaleDelta) => {
-      const xScale = (scale.dx / 100) + scaleDelta[0];
-      const yScale = (scale.dy / 100) + scaleDelta[1];
-      return [xScale, yScale];
+    scale: () => {
+      const s = this.state.scale;
+      return [
+        s[0], 0, 0,
+        0, s[1], 0,
+        0, 0, 1,
+      ];
     },
+
+    multiply: (a, b) => {
+      var a00 = a[0 * 3 + 0];
+      var a01 = a[0 * 3 + 1];
+      var a02 = a[0 * 3 + 2];
+      var a10 = a[1 * 3 + 0];
+      var a11 = a[1 * 3 + 1];
+      var a12 = a[1 * 3 + 2];
+      var a20 = a[2 * 3 + 0];
+      var a21 = a[2 * 3 + 1];
+      var a22 = a[2 * 3 + 2];
+      var b00 = b[0 * 3 + 0];
+      var b01 = b[0 * 3 + 1];
+      var b02 = b[0 * 3 + 2];
+      var b10 = b[1 * 3 + 0];
+      var b11 = b[1 * 3 + 1];
+      var b12 = b[1 * 3 + 2];
+      var b20 = b[2 * 3 + 0];
+      var b21 = b[2 * 3 + 1];
+      var b22 = b[2 * 3 + 2];
+
+      return [
+        b00 * a00 + b01 * a10 + b02 * a20,
+        b00 * a01 + b01 * a11 + b02 * a21,
+        b00 * a02 + b01 * a12 + b02 * a22,
+        b10 * a00 + b11 * a10 + b12 * a20,
+        b10 * a01 + b11 * a11 + b12 * a21,
+        b10 * a02 + b11 * a12 + b12 * a22,
+        b20 * a00 + b21 * a10 + b22 * a20,
+        b20 * a01 + b21 * a11 + b22 * a21,
+        b20 * a02 + b21 * a12 + b22 * a22,
+      ];
+    }
+  };
+  //transforms
+  calculateTranslation = (translation, translationDelta) => {
+    const tx = translation.dx + translationDelta[0];
+    const ty = translation.dy + translationDelta[1];
+    return [tx, ty];
   }
 
+  calculateRotation = (degrees) => {
+    const radians = degrees * Math.PI / 180;
+    const sine = Math.sin(radians);
+    const cosine = Math.cos(radians);
+    return [sine, cosine]
+  }
+
+  calculateScale = (scale, scaleDelta) => {
+    const xScale = (scale.dx / 100) + scaleDelta[0];
+    const yScale = (scale.dy / 100) + scaleDelta[1];
+    return [xScale, yScale];
+  }
+
+
+  //create shapes
   createRandomTriangle = () => {
+    //create a random triangle
     return this.createTriangle(Math.random() * 200, Math.random() * 200, Math.random() * 200, Math.random() * 200)
   }
 
   createTriangle = (width, height, xValue, yValue) => {
-    //generate a triangle with specified size and a_position
+    //create a triangle with specified size and a_position
     const triangleVerticies = [
       xValue, yValue,
       xValue + width, yValue,
@@ -95,7 +157,7 @@ export default class App extends React.Component {
   }
 
   createRectangle = (width, height, xValue, yValue) => {
-    //generate a rectangle with specified size and position
+    //create a rectangle with specified size and position
     const firstTriangle = this.createTriangle(width, height, xValue, yValue);
 
     const secondTriangle = this.createTriangle((width * -1), (height * -1), (xValue + width), (yValue + height));
@@ -106,7 +168,7 @@ export default class App extends React.Component {
   }
 
   createF = (width, height, xValue, yValue) => {
-    //generate rectangles in the shape of an 'F' with a specified height and position
+    //create multiple rectangles in the shape of an 'F' with a specified height and position
     const thickness = width / 4;
 
     const column = this.createRectangle(thickness, height, xValue, yValue);
@@ -139,7 +201,7 @@ export default class App extends React.Component {
     }
 
     const createProgram = (gl, vertexShader, fragmentShader) => {
-      //creates and links the program
+      //create and link the program
       const program = gl.createProgram();
       gl.attachShader(program, vertexShader);
       gl.attachShader(program, fragmentShader);
@@ -180,18 +242,11 @@ export default class App extends React.Component {
     const vertexShaderSource =
       `
       attribute vec2 a_position;
-      uniform vec2 u_translation;
-      uniform vec2 u_rotation;
-      uniform vec2 u_scale;
+      uniform mat3 u_matrix;
       uniform vec2 u_resolution;
       varying vec4 v_color;
       void main () {
-        vec2 scaledPosition = a_position * u_scale;
-        vec2 rotatedPosition = vec2(
-          scaledPosition.x * u_rotation.y + scaledPosition.y * u_rotation.x,
-          scaledPosition.y * u_rotation.y - scaledPosition.x * u_rotation.x
-        );
-        vec2 position = rotatedPosition + u_translation;
+        vec2 position = (u_matrix * vec3(a_position, 1)).xy;
         vec2 zeroToOne = position / u_resolution;
         vec2 zeroToTwo = zeroToOne * 2.0;
         vec2 clipSpace = zeroToTwo - 1.0;
@@ -222,9 +277,10 @@ export default class App extends React.Component {
     const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
     gl.uniform2f(resolutionUniformLocation, 400, 400);
 
-    const translationUniformLocation = gl.getUniformLocation(program, "u_translation");
-    const rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
-    const scaleUniformLocation = gl.getUniformLocation(program, "u_scale");
+    const matrixLocation = gl.getUniformLocation(program, "u_matrix");
+    // const translationUniformLocation = gl.getUniformLocation(program, "u_translation");
+    // const rotationUniformLocation = gl.getUniformLocation(program, "u_rotation");
+    // const scaleUniformLocation = gl.getUniformLocation(program, "u_scale");
 
 
     const renderObject = this.createF(100, 100, 0, 0);
@@ -235,12 +291,14 @@ export default class App extends React.Component {
       gl.clearColor(1, 1, 1, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-      const translation = this.state.translation;
-      gl.uniform2fv(translationUniformLocation, translation);
-      const rotation = this.state.rotation;
-      gl.uniform2fv(rotationUniformLocation, rotation)
-      const scale = this.state.scale;
-      gl.uniform2fv(scaleUniformLocation, scale)
+      const translationMatrix = this.m3.translation();
+      const rotationMatrix = this.m3.rotation();
+      const scaleMatrix = this.m3.scale();
+
+      let matrix = this.m3.multiply(translationMatrix, rotationMatrix);
+      matrix = this.m3.multiply(matrix, scaleMatrix);
+
+      gl.uniformMatrix3fv(matrixLocation, false, matrix);
 
       const primitiveType = gl.TRIANGLES;
       const offset = 0;
